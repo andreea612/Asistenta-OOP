@@ -1,0 +1,214 @@
+8 GRADE
+import os
+from datetime import datetime
+
+class File:
+    def __init__(self, name, created_time, updated_time):
+        self.name = name
+        self.created_time = created_time
+        self.updated_time = updated_time
+
+    def get_info(self):
+        return f"Name: {self.name}\nCreated Time: {self.created_time}\nUpdated Time: {self.updated_time}"
+
+class TextFile(File):
+    def __init__(self, name, created_time, updated_time, line_count, word_count, char_count):
+        super().__init__(name, created_time, updated_time)
+        self.line_count = line_count
+        self.word_count = word_count
+        self.char_count = char_count
+
+    def get_info(self):
+        return super().get_info() + f"\nLine Count: {self.line_count}\nWord Count: {self.word_count}\nCharacter Count: {self.char_count}"
+
+class ImageFile(File):
+    def __init__(self, name, created_time, updated_time, size):
+        super().__init__(name, created_time, updated_time)
+        self.size = size
+
+    def get_info(self):
+        return super().get_info() + f"\nSize: {self.size}"
+
+class ProgramFile(File):
+    def __init__(self, name, created_time, updated_time, line_count, class_count, method_count):
+        super().__init__(name, created_time, updated_time)
+        self.line_count = line_count
+        self.class_count = class_count
+        self.method_count = method_count
+
+    def get_info(self):
+        return super().get_info() + f"\nLine Count: {self.line_count}\nClass Count: {self.class_count}\nMethod Count: {self.method_count}"
+
+class FolderMonitor:
+    def __init__(self, folder_path):
+        self.folder_path = folder_path
+        self.files = {}
+
+    def commit(self):
+        snapshot_time = datetime.now().strftime("%Y-%m-%d T %H:%M:%S.%f")
+        print(f"Created snapshot at: {snapshot_time}")
+        self.snapshot_time = snapshot_time
+
+    def scan_folder(self):
+        for root, dirs, files in os.walk(self.folder_path):
+            for file_name in files:
+                file_path = os.path.join(root, file_name)
+                created_time = datetime.fromtimestamp(os.path.getctime(file_path)).strftime("%Y-%m-%d %H:%M:%S")
+                updated_time = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime("%Y-%m-%d %H:%M:%S %Z")
+                file_extension = file_name.split('.')[-1].lower()
+
+                if file_extension == 'txt':
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        line_count = sum(1 for line in f)
+                        f.seek(0)
+                        word_count = sum(len(line.split()) for line in f)
+                        f.seek(0)
+                        char_count = sum(len(line) for line in f)
+                    self.files[file_name] = TextFile(file_name, created_time, updated_time, line_count, word_count, char_count)
+                elif file_extension in ['png', 'jpg']:
+                    size = os.path.getsize(file_path)
+                    self.files[file_name] = ImageFile(file_name, created_time, updated_time, size)
+                elif file_extension in ['py', 'java']:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        line_count = sum(1 for line in f)
+                        f.seek(0)
+                        class_count = sum(1 for line in f if line.strip().startswith('class '))
+                        f.seek(0)
+                        method_count = sum(1 for line in f if line.strip().startswith('def '))
+                    self.files[file_name] = ProgramFile(file_name, created_time, updated_time, line_count, class_count, method_count)
+
+    def info(self, filename):
+        if filename in self.files:
+            print(self.files[filename].get_info())
+        else:
+            print("File not found.")
+
+    def status(self):
+        print(f"Created snapshot at: {self.snapshot_time}")
+        for filename, file_obj in self.files.items():
+            if file_obj.updated_time > self.snapshot_time:
+                print(f"{filename} - Changed")
+            else:
+                print(f"{filename} - No change")
+
+folder_monitor = FolderMonitor('/Users/andre/OOP/OOP3')
+folder_monitor.scan_folder()
+
+while True:
+    command = input("Enter command (commit/info <filename>/status): ").split()
+    if command[0] == 'commit':
+        folder_monitor.commit()
+    elif command[0] == 'info':
+        if len(command) > 1:
+            folder_monitor.info(command[1])
+        else:
+            print("Filename not provided.")
+    elif command[0] == 'status':
+        folder_monitor.status()
+    else:
+        print("Invalid command")
+
+
+
+
+
+
+
+
+
+9 GRADE
+import os
+import datetime
+
+class FolderMonitor:
+    def __init__(self, folder):
+        self.folder = folder
+        self.snapshot_time = None
+        self.snapshot_files = []
+
+    def commit(self):
+        self.snapshot_time = datetime.datetime.now()
+        self.snapshot_files = self.get_files_in_folder()
+
+    def get_files_in_folder(self):
+        return [f for f in os.listdir(self.folder) if os.path.isfile(os.path.join(self.folder, f))]
+
+    def status(self):
+        if self.snapshot_time is None:
+            print("Snapshot not yet taken.")
+            return
+
+        print(f"Created snapshot at: {self.snapshot_time}")
+
+        current_files = self.get_files_in_folder()
+
+        new_files = set(current_files) - set(self.snapshot_files)
+        for new_file in new_files:
+            print(f"{new_file} - New File")
+
+        deleted_files = set(self.snapshot_files) - set(current_files)
+        for deleted_file in deleted_files:
+            print(f"{deleted_file} - Deleted")
+
+
+
+
+
+
+
+
+10 GRADE
+import os
+import datetime
+import threading
+import time
+
+class FolderMonitor:
+    def __init__(self, folder):
+        self.folder = folder
+        self.files = []
+        self.lock = threading.Lock()
+
+    def add_file(self, filename):
+        if filename.endswith('.txt'):
+            self.files.append(filename)
+        elif filename.endswith(('.png', '.jpg')):
+            self.files.append(filename)
+        elif filename.endswith(('.py', '.java')):
+            self.files.append(filename)
+        else:
+            print(f"Ignored file: {filename}")
+
+    def get_files_in_folder(self):
+        return [f for f in os.listdir(self.folder) if os.path.isfile(os.path.join(self.folder, f))]
+
+    def detect_changes(self):
+        snapshot_time = datetime.datetime.now()
+        while True:
+            current_files = self.get_files_in_folder()
+            time.sleep(5)  # Check every 5 seconds
+
+            new_files = set(current_files) - set(self.files)
+            deleted_files = set(self.files) - set(current_files)
+            changed_files = [file for file in self.files if os.path.getmtime(file) > snapshot_time.timestamp()]
+
+            for file in new_files:
+                print(f"{file} - New File")
+            for file in deleted_files:
+                print(f"{file} - Deleted")
+
+    def start_detection_thread(self):
+        detection_thread = threading.Thread(target=self.detect_changes)
+        detection_thread.daemon = True  # Allow the thread to terminate when the main thread exits
+        detection_thread.start()
+
+folder_path = '/Users/andre/OOP/OOP3'
+folder_monitor = FolderMonitor(folder_path)
+
+for filename in os.listdir(folder_path):
+    folder_monitor.add_file(os.path.join(folder_path, filename))
+
+folder_monitor.start_detection_thread()
+
+while True:
+    pass
